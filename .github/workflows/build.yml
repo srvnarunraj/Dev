@@ -1,0 +1,31 @@
+name: Copy to Prod on Master Merge
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  copy-to-prod:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Clone production repository
+        run: |
+          git clone https://github.com/srvnarunraj/Prod.git prod-repo
+          cd prod-repo
+          git config user.name "Arun Raj"
+          git config user.email "arunraj14092002@gmail.com"
+          git config credential.helper store  # Store credentials temporarily
+      - name: Copy code from dev to prod
+        run: |
+          git archive --format=tar master | (cd prod-repo && tar xf -)
+          cd prod-repo
+          git add .
+          git commit -m "Copy code from dev to prod"
+          git remote set-url origin "https://x-access-token:$PAT_TOKEN@github.com/srvnarunraj/Prod.git"
+          git push origin master
+        env:
+          PAT_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }} 
