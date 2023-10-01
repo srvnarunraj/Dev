@@ -13,24 +13,32 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v2
-        with:
-          node-version: '16'
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Deploy to Cloud Functions
-        uses: GoogleCloudPlatform/github-actions/deploy-functions@master
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1.1.1
         with:
           credentials: ${{ secrets.GOOGLE_CLOUD_CREDENTIALS }}
-          project_id: YOUR_PROJECT_ID
-          region: us-central1 # Change this to your desired region
-          function_name: sayHello 
-          source_dir: ./ 
-          runtime: nodejs16 
-          trigger_http: true
+          project_id: phrasal-marker-400322
+          skip_install: true 
+          version: 'latest' 
+
+      - name: Authenticate with Google Cloud
+        run: |
+          echo "$GOOGLE_CLOUD_CREDENTIALS" > /tmp/credentials.json
+          gcloud auth activate-service-account --key-file=/tmp/credentials.json
+        env:
+          GOOGLE_CLOUD_CREDENTIALS: ${{ secrets.GOOGLE_CLOUD_CREDENTIALS }}
+
+
+      - name: Deploy to Cloud Functions
+        run: |
+          gcloud functions deploy sayHello \
+            --runtime nodejs16 \
+            --trigger-http \
+            --region us-central1 \
+            --source=./ \
+            --entry-point=sayHello
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_CLOUD_CREDENTIALS }}
 
       - name: Save Function URL as an output
         run: echo "FUNCTION_URL=$(gcloud functions describe sayHello --format='value(httpsTrigger.url)')" >> $GITHUB_ENV
