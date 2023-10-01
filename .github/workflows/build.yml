@@ -1,4 +1,4 @@
-name: Copy to Prod on Master Merge
+name: Deploy Cloud Function
 
 on:
   push:
@@ -6,26 +6,31 @@ on:
       - master
 
 jobs:
-  copy-to-prod:
+  deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
 
-      - name: Clone production repository
-        run: |
-          git clone https://github.com/srvnarunraj/Prod.git prod-repo
-          cd prod-repo
-          git config user.name "Arun Raj"
-          git config user.email "arunraj14092002@gmail.com"
-          git config credential.helper store  # Store credentials temporarily
-      - name: Copy code from dev to prod
-        run: |
-          git archive --format=tar master | (cd prod-repo && tar xf -)
-          cd prod-repo
-          git add .
-          git commit -m "Copy code from dev to prod"
-          git remote set-url origin "https://x-access-token:$PAT_TOKEN@github.com/srvnarunraj/Prod.git"
-          git push origin master
-        env:
-          PAT_TOKEN: ${{ secrets.MY_GITHUB_TOKEN }} 
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '16'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Deploy to Cloud Functions
+        uses: GoogleCloudPlatform/github-actions/deploy-functions@master
+        with:
+          credentials: ${{ secrets.GOOGLE_CLOUD_CREDENTIALS }}
+          project_id: YOUR_PROJECT_ID
+          region: us-central1 # Change this to your desired region
+          function_name: sayHello 
+          source_dir: ./ 
+          runtime: nodejs16 
+          trigger_http: true
+
+      - name: Save Function URL as an output
+        run: echo "FUNCTION_URL=$(gcloud functions describe sayHello --format='value(httpsTrigger.url)')" >> $GITHUB_ENV
